@@ -1,4 +1,4 @@
-import { AlertTriangle, BarChart3, Database, GitBranch, Home as HomeIcon, Search, ShieldCheck } from "lucide-react";
+import { AlertTriangle, BarChart3, Database, GitBranch, LayoutDashboard, Search, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
   AttributionReport,
@@ -6,8 +6,10 @@ import {
   Intervention,
   Memory,
   QueryResult,
+  SystemHealth,
   consolidate,
   createMemory,
+  getHealth,
   getReport,
   investigate,
   listMemories,
@@ -15,26 +17,26 @@ import {
   resetDemo,
   runInterventions
 } from "./api";
+import { Dashboard } from "./pages/Dashboard";
 import { Evaluation } from "./pages/Evaluation";
 import { Forensics } from "./pages/Forensics";
-import { Home } from "./pages/Home";
 import { MemoryLab } from "./pages/MemoryLab";
 import { PROTECTED_ACTION_QUERY, ProtectedAction } from "./pages/ProtectedAction";
 import { TraceExplorer } from "./pages/TraceExplorer";
 
-type Screen = "home" | "action" | "lab" | "trace" | "forensics" | "evaluation";
+type Screen = "dashboard" | "action" | "lab" | "trace" | "forensics" | "evaluation";
 
 const screens = [
-  { id: "home", label: "Home", icon: HomeIcon },
+  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "action", label: "Protected Action", icon: AlertTriangle },
   { id: "lab", label: "Memory Lab", icon: Database },
   { id: "trace", label: "Agent Trace", icon: Search },
   { id: "forensics", label: "Forensics", icon: ShieldCheck },
   { id: "evaluation", label: "Evaluation", icon: BarChart3 }
-] satisfies Array<{ id: Screen; label: string; icon: typeof HomeIcon }>;
+] satisfies Array<{ id: Screen; label: string; icon: typeof LayoutDashboard }>;
 
 export default function App() {
-  const [screen, setScreen] = useState<Screen>("home");
+  const [screen, setScreen] = useState<Screen>("dashboard");
   const [memories, setMemories] = useState<Memory[]>([]);
   const [queryResult, setQueryResult] = useState<QueryResult | null>(null);
   const [interventions, setInterventions] = useState<Intervention[]>([]);
@@ -42,9 +44,13 @@ export default function App() {
   const [forensic, setForensic] = useState<ForensicResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [health, setHealth] = useState<SystemHealth | null>(null);
 
   useEffect(() => {
     refreshMemories();
+    getHealth()
+      .then(setHealth)
+      .catch(() => setHealth(null));
   }, []);
 
   async function withLoading(work: () => Promise<void>) {
@@ -130,15 +136,18 @@ export default function App() {
     <div className="min-h-screen">
       <header className="sticky top-0 z-20 border-b border-line bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 md:flex-row md:items-center md:justify-between">
-          <button type="button" className="flex items-center gap-3 text-left" onClick={() => setScreen("home")}>
-            <div className="icon-button">
-              <GitBranch className="h-4 w-4" />
-            </div>
-            <div>
-              <div className="text-sm font-semibold uppercase text-slate-500">MemoryIR</div>
-              <div className="text-base font-semibold text-ink">Forensics for persistent AI memory</div>
-            </div>
-          </button>
+          <div className="flex items-center gap-4">
+            <button type="button" className="flex items-center gap-3 text-left" onClick={() => setScreen("dashboard")}>
+              <div className="icon-button">
+                <GitBranch className="h-4 w-4" />
+              </div>
+              <div>
+                <div className="text-sm font-semibold uppercase text-slate-500">MemoryIR</div>
+                <div className="text-base font-semibold text-ink">Causal provenance for agent memory</div>
+              </div>
+            </button>
+            <HealthBadge health={health} />
+          </div>
           <nav className="flex flex-wrap gap-2">
             {screens.map(({ id, label, icon: Icon }) => (
               <button
@@ -164,7 +173,7 @@ export default function App() {
       ) : null}
 
       <main className="mx-auto max-w-7xl px-4 py-6">
-        {screen === "home" ? <Home onLaunch={launch} /> : null}
+        {screen === "dashboard" ? <Dashboard onOpenAction={launch} /> : null}
         {screen === "action" ? (
           <ProtectedAction
             result={queryResult}
@@ -208,5 +217,28 @@ export default function App() {
         {screen === "evaluation" ? <Evaluation /> : null}
       </main>
     </div>
+  );
+}
+
+function HealthBadge({ health }: { health: SystemHealth | null }) {
+  if (!health) {
+    return (
+      <span className="hidden items-center gap-1.5 border border-line px-2 py-1 text-xs font-semibold text-slate-400 md:inline-flex" style={{ borderRadius: 8 }}>
+        <span className="h-1.5 w-1.5 rounded-full bg-slate-300" />
+        Connecting…
+      </span>
+    );
+  }
+  const live = health.provider !== "mock";
+  return (
+    <span
+      className={`hidden items-center gap-1.5 border px-2 py-1 text-xs font-semibold md:inline-flex ${
+        live ? "border-teal text-teal" : "border-line text-slate-500"
+      }`}
+      style={{ borderRadius: 8 }}
+    >
+      <span className={`h-1.5 w-1.5 rounded-full ${live ? "bg-teal" : "bg-slate-400"}`} />
+      {live ? `Live · ${health.database_backend}` : "Sandbox mode"}
+    </span>
   );
 }

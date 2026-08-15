@@ -43,7 +43,7 @@ export function MemoryLab({ memories, loading, onReset, onAdd, onConsolidate }: 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-semibold text-ink">Memory Lab</h1>
-            <p className="text-sm text-slate-600">Ground memories and derived-memory lineage.</p>
+            <p className="text-sm text-slate-600">Inspect what's actually in this agent's persistent memory, and how derived memories were consolidated.</p>
           </div>
           <div className="flex gap-2">
             <button type="button" className="secondary-button" onClick={onReset} disabled={loading}>

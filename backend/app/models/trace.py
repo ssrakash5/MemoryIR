@@ -75,3 +75,27 @@ class ForensicResponse(BaseModel):
     answer: str
     mcp_calls: list[dict[str, Any]]
     mode: str
+
+
+class TraceSummary(BaseModel):
+    trace_id: str
+    user_query: str
+    decision: str | None = None
+    status: str
+    started_at: str
+    completed_at: str | None = None
+    guarded: bool
+    flagged: bool
+    causal_precision: float | None = None
+    causal_recall: float | None = None
+    proxy_citation_rate: float | None = None
+    ground_path: str | None = None
+
+
+class DashboardSummary(BaseModel):
+    total_actions: int
+    guarded_actions: int
+    flagged_actions: int
+    avg_causal_precision: float | None = None
+    avg_proxy_citation_rate: float | None = None
+    recent: list[TraceSummary] = Field(default_factory=list)

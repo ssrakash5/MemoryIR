@@ -41,13 +41,15 @@ export function ProtectedAction({
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-ink">Protected Action Demo</h1>
-          <p className="text-sm text-slate-600">A risky production mutation is stopped before it touches customer data.</p>
+          <h1 className="text-2xl font-semibold text-ink">Protected Action Review</h1>
+          <p className="text-sm text-slate-600">
+            An agent-proposed production write, held until MemoryIR proves it doesn't causally depend on protected memory.
+          </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <button type="button" className="command-button" onClick={onAttempt} disabled={loading}>
             <Play className="h-4 w-4" />
-            Simulate Risky Write
+            Submit for Review
           </button>
           <button type="button" className="secondary-button" onClick={onGuard} disabled={loading || !result}>
             <ShieldCheck className="h-4 w-4" />
@@ -72,7 +74,7 @@ export function ProtectedAction({
               <p className="mt-1 text-sm leading-6 text-slate-700">{protectedPolicy}</p>
             </div>
             <div className="border-t border-line pt-4 text-sm leading-6 text-slate-700">
-              Without causal memory checks, the write has no proof that it respects the deployment constraint.
+              Without a causal check, this write ships on the agent's word alone — no proof it actually respects the deployment constraint.
             </div>
           </div>
         </section>
@@ -90,11 +92,11 @@ export function ProtectedAction({
             <div>
               <div className="text-xs font-semibold uppercase text-slate-500">Answer</div>
               <p className="mt-1 min-h-16 text-sm leading-6 text-slate-700">
-                {result?.answer ?? "Run the risky write simulation to create an agent trace."}
+                {result?.answer ?? "Submit the proposed action to create an agent trace."}
               </p>
             </div>
             <div className="border-t border-line pt-4 text-xs text-slate-500">
-              {result ? `Trace ${result.trace_id}` : "No trace yet"}
+              {result ? `Trace ${result.trace_id}` : "Awaiting submission"}
             </div>
           </div>
         </section>

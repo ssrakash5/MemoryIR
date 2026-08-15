@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from mangum import Mangum
 
-from .api import consolidate, demo, evaluation, forensics, interventions, memories, query, traces
+from .api import consolidate, dashboard, demo, evaluation, forensics, interventions, memories, query, traces
 from .config import get_settings
 from .services.container import build_services
 
@@ -38,6 +38,7 @@ app.include_router(interventions.router, prefix="/api")
 app.include_router(forensics.router, prefix="/api")
 app.include_router(evaluation.router, prefix="/api")
 app.include_router(demo.router, prefix="/api")
+app.include_router(dashboard.router, prefix="/api")
 
 
 @app.get("/api/health")

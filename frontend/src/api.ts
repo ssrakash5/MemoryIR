@@ -70,6 +70,40 @@ export type ForensicResponse = {
   mode: string;
 };
 
+export type TraceSummary = {
+  trace_id: string;
+  user_query: string;
+  decision?: string | null;
+  status: string;
+  started_at: string;
+  completed_at?: string | null;
+  guarded: boolean;
+  flagged: boolean;
+  causal_precision?: number | null;
+  causal_recall?: number | null;
+  proxy_citation_rate?: number | null;
+  ground_path?: string | null;
+};
+
+export type DashboardSummary = {
+  total_actions: number;
+  guarded_actions: number;
+  flagged_actions: number;
+  avg_causal_precision?: number | null;
+  avg_proxy_citation_rate?: number | null;
+  recent: TraceSummary[];
+};
+
+export type SystemHealth = {
+  status: string;
+  provider: string;
+  database_backend: string;
+};
+
+export async function getHealth(): Promise<SystemHealth> {
+  return request("/health");
+}
+
 export async function listMemories(): Promise<Memory[]> {
   return request("/memories");
 }
@@ -116,6 +150,10 @@ export async function investigate(traceId: string, question: string): Promise<Fo
 
 export async function getEvaluation() {
   return request("/evaluation");
+}
+
+export async function getDashboardSummary(): Promise<DashboardSummary> {
+  return request("/dashboard/summary");
 }
 
 async function request(path: string, init: RequestInit = {}) {

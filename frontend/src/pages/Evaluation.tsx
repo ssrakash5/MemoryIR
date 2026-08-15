@@ -24,8 +24,11 @@ export function Evaluation() {
           <BarChart3 className="h-4 w-4" />
         </div>
         <div>
-          <h1 className="text-2xl font-semibold text-ink">Evaluation</h1>
-          <p className="text-sm text-slate-600">Controlled evaluation suite.</p>
+          <h1 className="text-2xl font-semibold text-ink">Quality Benchmarks</h1>
+          <p className="text-sm text-slate-600">
+            How reliably MemoryIR's causal attribution holds up across direct, one-hop, multi-hop, and proxy-citation
+            scenarios.
+          </p>
         </div>
       </div>
       {summary ? (
@@ -69,10 +72,13 @@ export function Evaluation() {
               </div>
             </div>
           </div>
-          <div className="text-sm text-slate-600">{summary.case_count} cases loaded.</div>
+          <div className="text-sm text-slate-600">{summary.case_count} controlled scenarios evaluated.</div>
         </>
       ) : (
-        <div className="panel p-6 text-sm text-slate-600">Evaluation data is not loaded.</div>
+        <div className="panel p-6 text-sm text-slate-600">
+          Benchmark results aren't available. Run <code className="font-mono">python eval/run_causal_eval.py</code> from
+          the repo to generate them.
+        </div>
       )}
     </div>
   );

@@ -39,7 +39,7 @@ export function Forensics({ result, forensic, loading, onInvestigate }: Props) {
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
         <pre className="panel min-h-[420px] whitespace-pre-wrap p-5 text-sm leading-6 text-slate-800">
-          {forensic?.answer ?? "Run an agent trace, then ask the investigator."}
+          {forensic?.answer ?? "Evaluate a protected action first, then ask the investigator why a memory mattered."}
         </pre>
         <div className="panel p-4">
           <h2 className="text-sm font-semibold uppercase text-slate-500">MCP Calls</h2>

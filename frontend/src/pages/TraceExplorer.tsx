@@ -101,7 +101,9 @@ export function TraceExplorer({
           </div>
         </>
       ) : (
-        <div className="panel p-6 text-sm text-slate-600">Run a query to create a trace.</div>
+        <div className="panel p-6 text-sm text-slate-600">
+          Ask the agent a question to create a trace, then investigate what actually drove its answer.
+        </div>
       )}
     </div>
   );

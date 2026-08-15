@@ -439,6 +439,10 @@ class InMemoryMemoryStore:
     def get_trace(self, trace_id: str) -> TraceRecord:
         return self.traces[trace_id]
 
+    def list_traces(self, *, limit: int = 50) -> list[TraceRecord]:
+        traces = sorted(self.traces.values(), key=lambda trace: trace.started_at, reverse=True)
+        return traces[:limit]
+
     def complete_trace(self, trace_id: str, *, response_text: str, decision_label: str) -> TraceRecord:
         trace = self.traces[trace_id]
         trace.response_text = response_text
@@ -907,6 +911,14 @@ class DatabaseMemoryStore:
         if row is None:
             raise KeyError(f"Unknown trace: {trace_id}")
         return self._row_to_trace(row)
+
+    def list_traces(self, *, limit: int = 50) -> list[TraceRecord]:
+        with db.connect(self.settings) as conn:
+            rows = conn.execute(
+                "SELECT * FROM traces ORDER BY started_at DESC LIMIT %s",
+                (limit,),
+            ).fetchall()
+        return [self._row_to_trace(row) for row in rows]
 
     def complete_trace(self, trace_id: str, *, response_text: str, decision_label: str) -> TraceRecord:
         with db.connect(self.settings) as conn:

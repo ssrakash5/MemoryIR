@@ -4,12 +4,14 @@ from .trace import (
     ClaimedMemory,
     ConsolidationRequest,
     ConsolidationResponse,
+    DashboardSummary,
     ForensicRequest,
     ForensicResponse,
     InterventionRead,
     QueryRequest,
     QueryResponse,
     RetrievedMemory,
+    TraceSummary,
 )
 
 __all__ = [
@@ -17,6 +19,7 @@ __all__ = [
     "ClaimedMemory",
     "ConsolidationRequest",
     "ConsolidationResponse",
+    "DashboardSummary",
     "ForensicRequest",
     "ForensicResponse",
     "InterventionRead",
@@ -27,4 +30,5 @@ __all__ = [
     "QueryRequest",
     "QueryResponse",
     "RetrievedMemory",
+    "TraceSummary",
 ]
