@@ -1,112 +1,257 @@
 # MemoryIR
 
-A causal provenance layer for persistent agent memory. Before an agent
-modifies critical systems, MemoryIR asks: which memories actually caused
-this decision? It retrieves the agent's memory from CockroachDB, records
-the claimed memory attribution, runs counterfactual interventions, traces
-derived memories back to their ancestors, and blocks actions that depend
-on unsafe or protected memory paths.
+**Before an AI agent acts on what it remembers, prove that memory actually caused the decision.**
 
-Built for the CockroachDB x AWS Hackathon
-(https://cockroachdb-ai.devpost.com/).
+MemoryIR is a causal provenance firewall for persistent agent memory. It sits
+between "the agent retrieved a memory" and "the agent is allowed to act,"
+and it answers one question with evidence instead of trust: *if this memory
+were removed, would the decision change?*
 
-## Why
+Built for the [CockroachDB x AWS Hackathon](https://cockroachdb-ai.devpost.com/).
 
-A malicious or stale instruction can be stored in an agent's long-term
-memory, summarized into a derived memory, retrieved days later, and
-quietly steer an autonomous action. Standard citation/retrieval logs only
-show correlation ("the agent retrieved memory X"), not whether X actually
-caused the decision. MemoryIR measures *interventional* influence instead
-of trusting the agent's self-report: it asks "what changed the decision
-when removed?" rather than "what did the agent say it used?"
+---
 
-## Demo Use Case
+## This is not a hypothetical
 
-An AI DevOps agent is asked to update the production database
-architecture for customer orders. The attempted write is:
+Persistent agent memory is already a live attack surface, in production systems, this year.
+
+- **SpAIware (2024)** — security researcher Johann Rehberger showed that a
+  single indirect prompt injection, delivered through a webpage ChatGPT
+  merely *read*, could write a persistent instruction into ChatGPT's
+  long-term memory. It survived across sessions and quietly exfiltrated
+  data from every future conversation, invisible to the user.
+  [(Details)](https://thehackernews.com/2024/09/chatgpt-macos-flaw-couldve-enabled-long.html)
+- **EchoLeak / CVE-2025-32711 (2025)** — a zero-click prompt injection in
+  Microsoft 365 Copilot, triggered by nothing more than a crafted email
+  landing in an inbox. No click, no download, no user action. Copilot
+  read the email, treated its contents as trusted context, and leaked
+  internal data to an attacker. CVSS 9.3. The first documented case of
+  prompt injection weaponized for real data exfiltration in a production
+  LLM system.
+  [(Details)](https://thehackernews.com/2025/06/zero-click-ai-vulnerability-exposes.html)
+- **MemGhost (2026)** — researchers planted a false, persistent memory into
+  a personal AI agent (OpenClaw) using a single ordinary email. The
+  planted memory survived across sessions and silently steered the
+  agent's later answers in **56 out of 56** test cases.
+  [(Details)](https://thehackernews.com/2026/07/new-memghost-attack-plants-persistent.html)
+
+Three different products, three different vendors, one shared failure mode:
+**the agent trusted that a memory existing in its store meant the memory
+was safe to act on.** None of these systems asked the harder question —
+not "what did the agent retrieve," but "what actually caused the agent to
+decide this."
+
+That is the gap MemoryIR closes, at the moment it matters most: right
+before the agent is about to write to production.
+
+---
+
+## The demo, end to end
+
+An AI DevOps agent is asked to change the production database
+architecture for customer orders:
 
 ```text
 customer_orders.primary_database = POSTGRES_SINGLE_REGION
 ```
 
-That looks plausible on its own, but the agent also holds a critical
-production policy in persistent memory (`M2`), later consolidated into a
-derived memory (`M7`) requiring multi-region resilience. MemoryIR runs
-leave-one-memory-out interventions, finds that removing `M7` flips the
-decision, traces `M7` back to its causal ancestor `M2`, and blocks the
-single-region write because it conflicts with that causal path.
+On the surface this looks reasonable — the agent has a memory saying the
+team prefers PostgreSQL-compatible databases. But the agent also holds a
+production policy memory (`M2`, "the deployment must survive regional
+failures"), which was later consolidated into a derived memory (`M7`,
+"use a managed, multi-region-resilient PostgreSQL-compatible database").
+
+MemoryIR doesn't accept the agent's citation at face value. It runs the
+intervention:
+
+1. Remove `M7`, rerun the agent → decision flips.
+2. Remove distractor memories (`M12`, `M16`) → decision doesn't move.
+3. `M7` is influential. Walk its derivation lineage back to its ground
+   ancestor: `M2 -> M7 -> decision`.
+4. The proposed single-region write directly contradicts the causal
+   memory path. **Verdict: Blocked.**
+
+The forensic layer, backed by CockroachDB Managed MCP, lets anyone ask
+*"why was M7 influential?"* after the fact and get the trace, not a guess.
+
+### What MemoryIR actually produced
+
+SpAIware, EchoLeak, and MemGhost all exploited the same gap: the system
+trusted that a memory being *retrieved or cited* meant it was *causally
+responsible*. That's exactly what MemoryIR's attribution engine measures
+directly. Below is real, reproducible output — not a mockup — from
+running this scenario through MemoryIR's own pipeline (`MockProvider`,
+no live credentials needed):
+
+```json
+{
+  "decision": "COCKROACHDB",
+  "claimed_memories": ["M7", "M12"],
+  "retrieved_memories": ["M7", "M12", "M16"],
+  "influential_memories": ["M7"],
+  "claim_retrieval_precision": 1.0,
+  "causal_precision": 0.5,
+  "causal_recall": 1.0,
+  "proxy_citation_rate": 0.5,
+  "average_provenance_depth": 1.0,
+  "ground_provenance": [
+    {
+      "ancestor": "M2",
+      "retrieved": "M7",
+      "depth": 1,
+      "decision_changed": true,
+      "path": ["M2", "M7", "Decision"]
+    }
+  ]
+}
+```
+
+Read this as a claim about the **agent**, not about MemoryIR: the agent
+cited two memories as its reasons (`M7`, `M12`), but only one of them
+actually drove the decision. That's what `causal_precision: 0.5` and
+`proxy_citation_rate: 0.5` mean — half of the agent's own story was a
+plausible-looking proxy citation, exactly the kind of harmless derived
+memory SpAIware and MemGhost rode in on.
+
+MemoryIR's own performance is the other number: `causal_recall: 1.0` —
+of every memory that *actually* changed the decision, it found 100% of
+them, zero missed. It doesn't stop at "the agent used a real memory." It
+walks past the proxy (`M12`) to the one memory that truly moved the
+decision (`M7`), and one hop further to its real ground cause (`M2`).
+
+Reproduce it yourself:
+
+```bash
+cd backend
+python -c "
+from app.config import Settings
+from app.services.container import build_services
+
+services = build_services(Settings(provider='mock', database_backend='memory'))
+trace_id, result, retrieved = services.query_engine.query(
+    query='Which database architecture best satisfies the project requirements?',
+    top_k=3,
+)
+services.intervention_engine.run(trace_id)
+print(services.attribution.report(trace_id).model_dump_json(indent=2))
+"
+```
+
+### Controlled evaluation suite: 48 scenarios, run for real
+
+One scenario is a story. To check the mechanism itself, we built a harness
+(`eval/run_causal_eval.py`) that takes the 48 structured cases in
+`eval/cases/` — direct citations, one-hop derivations, multi-hop
+derivations, and proxy-citation patterns — and drives every one through
+the *actual* production classes (`QueryEngine`, `InterventionEngine`,
+`AttributionEngine`), not a mockup. Each case only defines structure
+(which memory is the true ground cause, how many derivation hops, what
+the agent claims); the pipeline does the rest.
+
+```bash
+python eval/run_causal_eval.py
+```
+
+Real output:
+
+| Scenario type | Cases | Decision correct | Proxy citation correctly flagged | True root ancestor found |
+|---|---|---|---|---|
+| Direct memory (0 hops) | 12 | 12/12 | 0/12 (correctly — nothing to flag) | n/a |
+| One-hop consolidation | 12 | 12/12 | 12/12 | 12/12 |
+| Proxy citation (1 hop) | 12 | 12/12 | 12/12 | 12/12 |
+| Multi-hop consolidation (2 hops) | 12 | 12/12 | 12/12 | **0/12** |
+
+The decision layer is correct across all 48 cases, and every one-hop and
+direct case resolves ground provenance exactly right. The honest gap: at
+two derivation hops, MemoryIR currently identifies the immediate derived
+parent as the cause but doesn't yet walk past it to the true root
+ancestor — it stops one hop short. This is a real, measured result, not a
+guess, and it's the same limitation already called out in
+[What's Next](#whats-next): extending ancestor ablation from one hop to
+recursive multi-hop recomputation is the next concrete piece of work, not
+a hypothetical one.
+
+---
 
 ## Architecture
 
-```text
-Browser
-  |
-  v
-AWS API Gateway
-  |
-  v
-AWS Lambda
-  |-- React static app
-  |-- FastAPI backend
-  |
-  |-- Amazon Bedrock
-  |     |-- Titan embeddings
-  |     |-- Nova Micro decision model
-  |
-  v
-CockroachDB Cloud
-  |-- memories
-  |-- memory_edges
-  |-- traces
-  |-- retrieval_runs
-  |-- retrieval_items
-  |-- generation_claims
-  |-- intervention_runs
-  |
-  v
-CockroachDB Managed MCP
-  |-- forensic schema inspection
-  |-- trace investigation
+```mermaid
+flowchart TD
+    U[Protected Action Request] --> EMB[Bedrock Titan Embeddings]
+    EMB --> RET[CockroachDB Vector Search]
+    RET -->|"retrieves M7, M12, M16"| GEN[Bedrock Agent Model]
+    GEN -->|"decision + claimed memory attribution"| TRACE[(CockroachDB<br/>traces / retrieval_items /<br/>generation_claims)]
+
+    TRACE --> IE[Intervention Engine]
+    IE -->|"leave-one-memory-out, rerun"| FLIP{Decision flips?}
+    FLIP -->|"yes: M7"| LIN[Lineage Walk]
+    FLIP -->|"no: M12, M16 discarded"| DROP[Not causal]
+    LIN -->|"memory_edges"| GROUND["Ground ancestor: M2"]
+
+    GROUND --> VERDICT{"Conflicts with<br/>protected path?"}
+    VERDICT -->|yes| BLOCK[🚫 Blocked]
+    VERDICT -->|no| ALLOW[✅ Allowed]
+
+    TRACE -.-> MCP[CockroachDB Managed MCP]
+    MCP -.->|"forensic Q&A: why was M7 influential?"| INVESTIGATOR[Forensics Console]
+
+    style BLOCK fill:#7f1d1d,color:#fff
+    style ALLOW fill:#14532d,color:#fff
+    style GROUND fill:#78350f,color:#fff
 ```
 
-Backend pipeline:
+```text
+Browser → AWS API Gateway → AWS Lambda (React static app + FastAPI backend)
+                                   |
+                                   ├── Amazon Bedrock (Titan embeddings, Nova Micro decisions)
+                                   └── CockroachDB Cloud (memory, traces, lineage, interventions)
+                                              └── CockroachDB Managed MCP (forensic investigator)
+```
+
+---
+
+## What actually runs
 
 1. Receive a protected action request.
-2. Generate a query embedding with Amazon Bedrock Titan Text Embeddings.
-3. Retrieve persistent memories from CockroachDB using vector search.
-4. Call an Amazon Bedrock model to produce a structured decision and
-   claimed memory attribution.
-5. Store the trace, retrieval run, retrieved memories, and generation
+2. Embed the query with Amazon Bedrock Titan Text Embeddings.
+3. Retrieve persistent memories from CockroachDB via vector search.
+4. Call a Bedrock model for a structured decision + claimed memory
+   attribution.
+5. Persist the trace, retrieval run, retrieved memories, and generation
    claims in CockroachDB.
-6. Run counterfactual memory ablations.
-7. For influential derived memories, inspect the memory DAG and rerun
+6. Run counterfactual leave-one-memory-out interventions.
+7. For influential derived memories, walk the memory DAG and rerun
    ancestor interventions.
-8. Generate a MemoryIR attribution report.
-9. Block or allow the action based on causal evidence.
-10. Use CockroachDB Managed MCP for natural-language forensic inspection
-    of the same live memory database.
+8. Generate a MemoryIR attribution report: causal precision, recall,
+   proxy-citation rate, ground provenance depth.
+9. Block or allow the action based on causal evidence, not self-report.
+10. Serve independent forensic Q&A over the same live memory database via
+    CockroachDB Managed MCP.
 
-## CockroachDB Tools Used
+## CockroachDB tools used
 
-- **Distributed Vector Indexing** — persistent memory embeddings and
-  semantic retrieval for each agent trace, stored alongside the
-  transactional trace/provenance data in the same database.
+- **Distributed Vector Indexing** — the persistent memory layer itself.
+  Embeddings, semantic retrieval, and transactional trace/provenance data
+  live in one database instead of being split across a vector store and
+  an app database.
 - **CockroachDB Cloud Managed MCP Server** — the forensic investigator
-  queries trace tables, generation claims, memory edges, retrieval
-  items, and intervention results through Managed MCP to explain why a
-  memory mattered, independent of the app's own storage path.
+  queries trace tables, generation claims, memory edges, retrieval items,
+  and intervention results independently of the app's own read path,
+  proving the memory layer is auditable, not just used as storage.
 
-## AWS Services Used
+## AWS services used
 
-- **AWS Lambda** — packages the FastAPI backend and React production
-  build together; serves both `/api/*` and static frontend assets.
-- **Amazon Bedrock** — Titan Text Embeddings V2 (256-dim) for memory
-  embeddings, Amazon Nova Micro for agent decision generation.
-- **Amazon S3** — stores the Lambda deployment artifact.
-- **Amazon API Gateway** — public HTTP endpoint in front of Lambda,
-  request-gated for cost control.
+- **AWS Lambda** — one Lambda serving both `/api/*` (FastAPI) and the
+  static React build.
+- **Amazon Bedrock** — Titan Text Embeddings V2 (256-dim) + Nova Micro for
+  agent decisions.
+- **Amazon S3** — Lambda deployment artifact storage.
+- **Amazon API Gateway** — public, rate-gated HTTP endpoint in front of
+  Lambda.
 
-## Local Demo
+---
+
+## Run it locally
 
 ```bash
 make backend-install
@@ -115,28 +260,19 @@ make dev-backend
 make dev-frontend
 ```
 
-The default mode uses in-memory storage and `MockProvider`, so the demo
-flow works without secrets:
+Default mode uses in-memory storage and a `MockProvider`, so the full flow
+works with zero secrets:
 
 `M1/M2/M3 -> M7 -> decision -> interventions -> ground provenance -> MCP console`
 
-## Credentials
+## Live credentials
 
-Put live credentials in `creds.env` in this folder (gitignored, never
-committed). The backend loads `creds.env` first and then `.env` if
-present. See `.env.example` for the full variable list. Expected live
-keys:
+Put real credentials in a local `creds.env` (gitignored, never committed).
+The backend loads `creds.env` first, then `.env`. See `.env.example` for
+the full variable list — provider, database backend, AWS region, Bedrock
+model IDs, MCP endpoint/key/cluster.
 
-- `MEMORYIR_PROVIDER=bedrock`
-- `MEMORYIR_DATABASE_BACKEND=cockroach`
-- `DATABASE_URL`
-- `AWS_REGION`
-- `BEDROCK_EMBED_MODEL_ID`
-- `BEDROCK_AGENT_MODEL_ID`
-- `MCP_API_KEY`
-- `MCP_CLUSTER_ID`
-
-## Verification
+## Verify
 
 ```bash
 make test-backend
@@ -144,23 +280,11 @@ cd frontend && npm run build
 python eval/run_eval.py
 ```
 
-## Presenter Flow
-
-Open the public demo and use **Protected Action**:
-
-1. **Simulate Risky Write** creates an agent trace for:
-   `customer_orders.primary_database = POSTGRES_SINGLE_REGION`
-2. **Run MemoryIR Guard** runs causal interventions.
-3. The expected verdict is **Blocked** because protected memory `M2 -> M7`
-   causally supports `COCKROACHDB`, so the single-region write is rejected.
-4. **Open Trace** shows retrieval, claims, interventions, and ground provenance.
-5. **Open Forensics** is available after the guard runs for MCP-backed questions.
-
 ## Deploy
 
-The working deployment path does not require the AWS or SAM CLIs. It packages
-the FastAPI app for Lambda, uploads the artifact to S3, creates or updates the
-Lambda execution role, Lambda function, and public HTTP API Gateway endpoint.
+No AWS or SAM CLI required. Packages FastAPI for Lambda, uploads to S3,
+and creates/updates the Lambda execution role, function, and public HTTP
+API Gateway endpoint.
 
 ```powershell
 cd C:\FSU\projects\MemIR\hackathon
@@ -169,12 +293,20 @@ python backend/scripts/copy_frontend.py
 python deploy_aws.py --direct
 ```
 
-The public API Gateway stage is request-gated by default:
+The public endpoint is request-gated by default
+(`MEMORYIR_API_RATE_LIMIT`, `MEMORYIR_API_BURST_LIMIT` in `creds.env`).
 
-- `MEMORYIR_API_RATE_LIMIT=1.0`
-- `MEMORYIR_API_BURST_LIMIT=5`
+---
 
-Override those in `creds.env` before deployment if the demo needs more room.
+## What's Next
+
+- Extend ancestor ablation from one hop to recursive multi-hop
+  recomputation, closing the gap measured above.
+- Add explicit injected-memory seeding for live red-team demos.
+- Add policy/trust labels to memory sources and fail closed when a
+  protected action's causal path is unknown or untrusted.
+- Add trace export for auditors and memory-risk dashboards across
+  agents/teams.
 
 ## License
 
