@@ -1,0 +1,118 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: MemoryIR hackathon Lambda Function URL deployment.
+
+Parameters:
+  ArtifactBucket:
+    Type: String
+  ArtifactKey:
+    Type: String
+  DatabaseUrl:
+    Type: String
+    NoEcho: true
+  McpApiKey:
+    Type: String
+    NoEcho: true
+  McpClusterId:
+    Type: String
+
+Resources:
+  MemoryIRRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: MemoryIRBedrockInvoke
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
+                  - bedrock:Converse
+                  - bedrock:ConverseStream
+                Resource: '*'
+
+  MemoryIRFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: memoryir-hackathon
+      Runtime: python3.12
+      Handler: app.main.handler
+      Role: !GetAtt MemoryIRRole.Arn
+      Code:
+        S3Bucket: !Ref ArtifactBucket
+        S3Key: !Ref ArtifactKey
+      Timeout: 45
+      MemorySize: 1024
+      Architectures:
+        - x86_64
+      ReservedConcurrentExecutions: 3
+      Environment:
+        Variables:
+          MEMORYIR_PROVIDER: bedrock
+          MEMORYIR_DATABASE_BACKEND: cockroach
+          BEDROCK_EMBED_MODEL_ID: amazon.titan-embed-text-v2:0
+          BEDROCK_AGENT_MODEL_ID: amazon.nova-micro-v1:0
+          FRONTEND_DIST: static
+          DATABASE_URL: !Ref DatabaseUrl
+          MCP_API_KEY: !Ref McpApiKey
+          MCP_CLUSTER_ID: !Ref McpClusterId
+
+  MemoryIRHttpApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: memoryir-hackathon
+      ProtocolType: HTTP
+      CorsConfiguration:
+        AllowOrigins:
+          - '*'
+        AllowMethods:
+          - GET
+          - POST
+          - OPTIONS
+        AllowHeaders:
+          - content-type
+
+  MemoryIRIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref MemoryIRHttpApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt MemoryIRFunction.Arn
+      PayloadFormatVersion: '2.0'
+
+  MemoryIRRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref MemoryIRHttpApi
+      RouteKey: '$default'
+      Target: !Sub 'integrations/${MemoryIRIntegration}'
+
+  MemoryIRStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref MemoryIRHttpApi
+      StageName: '$default'
+      AutoDeploy: true
+
+  MemoryIRApiPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref MemoryIRFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MemoryIRHttpApi}/*/*'
+
+Outputs:
+  MemoryIRUrl:
+    Description: Public HTTP API URL for the MemoryIR application.
+    Value: !Sub 'https://${MemoryIRHttpApi}.execute-api.${AWS::Region}.amazonaws.com/'

@@ -1,0 +1,10 @@
+creds.env
+.env
+.deploy/
+.aws-sam/
+backend/static/
+frontend/node_modules/
+frontend/dist/
+__pycache__/
+*.pyc
+.pytest_cache/

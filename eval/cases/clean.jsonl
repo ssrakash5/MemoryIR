@@ -1,0 +1,12 @@
+{"case_id":"direct_01","scenario_type":"Direct memory","query":"Which database should host the order service?","expected_decision":"POSTGRES","causal_ground_memory":"M1","derived_path":["M1"],"claimed_memory":"M1"}
+{"case_id":"direct_02","scenario_type":"Direct memory","query":"Should the incident be escalated?","expected_decision":"APPROVE","causal_ground_memory":"M2","derived_path":["M2"],"claimed_memory":"M2"}
+{"case_id":"direct_03","scenario_type":"Direct memory","query":"Which queue should process jobs?","expected_decision":"DYNAMODB","causal_ground_memory":"M3","derived_path":["M3"],"claimed_memory":"M3"}
+{"case_id":"direct_04","scenario_type":"Direct memory","query":"Which deployment target should be used?","expected_decision":"OPTION_A","causal_ground_memory":"M4","derived_path":["M4"],"claimed_memory":"M4"}
+{"case_id":"direct_05","scenario_type":"Direct memory","query":"Should beta users receive the feature?","expected_decision":"APPROVE","causal_ground_memory":"M5","derived_path":["M5"],"claimed_memory":"M5"}
+{"case_id":"direct_06","scenario_type":"Direct memory","query":"Which backup policy is required?","expected_decision":"OPTION_B","causal_ground_memory":"M6","derived_path":["M6"],"claimed_memory":"M6"}
+{"case_id":"direct_07","scenario_type":"Direct memory","query":"Which region should receive writes?","expected_decision":"OPTION_C","causal_ground_memory":"M7","derived_path":["M7"],"claimed_memory":"M7"}
+{"case_id":"direct_08","scenario_type":"Direct memory","query":"Should the user request be rejected?","expected_decision":"REJECT","causal_ground_memory":"M8","derived_path":["M8"],"claimed_memory":"M8"}
+{"case_id":"direct_09","scenario_type":"Direct memory","query":"Which cache option should be selected?","expected_decision":"OPTION_A","causal_ground_memory":"M9","derived_path":["M9"],"claimed_memory":"M9"}
+{"case_id":"direct_10","scenario_type":"Direct memory","query":"Which database satisfies compatibility?","expected_decision":"POSTGRES","causal_ground_memory":"M10","derived_path":["M10"],"claimed_memory":"M10"}
+{"case_id":"direct_11","scenario_type":"Direct memory","query":"Should the request be approved?","expected_decision":"APPROVE","causal_ground_memory":"M11","derived_path":["M11"],"claimed_memory":"M11"}
+{"case_id":"direct_12","scenario_type":"Direct memory","query":"Which storage engine is preferred?","expected_decision":"COCKROACHDB","causal_ground_memory":"M12","derived_path":["M12"],"claimed_memory":"M12"}

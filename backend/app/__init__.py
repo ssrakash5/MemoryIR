@@ -1,0 +1,2 @@
+"""MemoryIR hackathon backend."""
+
