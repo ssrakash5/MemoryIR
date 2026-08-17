@@ -10,9 +10,9 @@ type Props = {
 export function MemoryGraph({ memories, highlighted = [] }: Props) {
   const { nodes, edges } = useMemo(() => buildGraph(memories, highlighted), [memories, highlighted]);
   return (
-    <div className="h-[420px] min-h-[320px] overflow-hidden border border-line bg-slate-50" style={{ borderRadius: 8 }}>
+    <div className="h-[420px] min-h-[320px] overflow-hidden border border-line bg-panel2" style={{ borderRadius: 12 }}>
       <ReactFlow nodes={nodes} edges={edges} fitView proOptions={{ hideAttribution: true }}>
-        <Background color="#cbd5e1" gap={18} />
+        <Background color="#2a2e45" gap={18} />
         <Controls showInteractive={false} />
       </ReactFlow>
     </div>
@@ -63,19 +63,20 @@ function buildGraph(memories: Memory[], highlighted: string[]): { nodes: Node[];
               <div className="w-[190px]">
                 <div className="flex items-center justify-between gap-2">
                   <strong>{memory.display_id}</strong>
-                  <span className="text-[10px] uppercase text-slate-500">{memory.memory_type}</span>
+                  <span className="text-[10px] uppercase text-slate-400">{memory.memory_type}</span>
                 </div>
-                <div className="mt-1 line-clamp-3 text-xs leading-4 text-slate-600">{memory.content}</div>
+                <div className="mt-1 line-clamp-3 text-xs leading-4 text-slate-400">{memory.content}</div>
               </div>
             )
           },
           style: {
-            border: `1px solid ${isHot ? "#0f766e" : "#cbd5e1"}`,
-            background: isHot ? "#ecfdf5" : "#ffffff",
-            borderRadius: 8,
-            color: "#111827",
+            border: `1px solid ${isHot ? "#6d5ef8" : "#262a3d"}`,
+            background: isHot ? "rgba(109, 94, 248, 0.12)" : "#13141f",
+            borderRadius: 10,
+            color: "#f5f6fa",
             padding: 10,
-            width: 210
+            width: 210,
+            boxShadow: isHot ? "0 0 0 1px rgba(109, 94, 248, 0.35)" : "none"
           }
         });
       });
@@ -89,6 +90,6 @@ function edge(source: string, target: string): Edge {
     source,
     target,
     animated: true,
-    style: { stroke: "#0f766e", strokeWidth: 2 }
+    style: { stroke: "#6d5ef8", strokeWidth: 2 }
   };
 }

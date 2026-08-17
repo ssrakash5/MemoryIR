@@ -14,7 +14,12 @@ from .config import Settings
 def connect(settings: Settings) -> psycopg.Connection:
     if not settings.database_url:
         raise RuntimeError("DATABASE_URL is required when using CockroachDB storage.")
-    conn = psycopg.connect(_normalize_database_url(settings.database_url), autocommit=True, row_factory=dict_row)
+    conn = psycopg.connect(
+        _normalize_database_url(settings.database_url),
+        autocommit=True,
+        row_factory=dict_row,
+        connect_timeout=10,
+    )
     register_vector(conn)
     return conn
 

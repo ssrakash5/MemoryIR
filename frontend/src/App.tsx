@@ -1,4 +1,4 @@
-import { AlertTriangle, BarChart3, Database, GitBranch, LayoutDashboard, Search, ShieldCheck } from "lucide-react";
+import { AlertTriangle, BarChart3, Database, LayoutDashboard, Search, Shield, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
   AttributionReport,
@@ -27,13 +27,13 @@ import { TraceExplorer } from "./pages/TraceExplorer";
 type Screen = "dashboard" | "action" | "lab" | "trace" | "forensics" | "evaluation";
 
 const screens = [
-  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { id: "action", label: "Protected Action", icon: AlertTriangle },
-  { id: "lab", label: "Memory Lab", icon: Database },
-  { id: "trace", label: "Agent Trace", icon: Search },
-  { id: "forensics", label: "Forensics", icon: ShieldCheck },
-  { id: "evaluation", label: "Evaluation", icon: BarChart3 }
-] satisfies Array<{ id: Screen; label: string; icon: typeof LayoutDashboard }>;
+  { id: "dashboard", label: "Dashboard", shortLabel: "Dashboard", icon: LayoutDashboard },
+  { id: "action", label: "Protected Action Review", shortLabel: "Action", icon: AlertTriangle },
+  { id: "lab", label: "Memory Lab", shortLabel: "Memory", icon: Database },
+  { id: "trace", label: "Agent Trace", shortLabel: "Trace", icon: Search },
+  { id: "forensics", label: "Forensic Investigator", shortLabel: "Forensics", icon: ShieldCheck },
+  { id: "evaluation", label: "Quality Benchmarks", shortLabel: "Quality", icon: BarChart3 }
+] satisfies Array<{ id: Screen; label: string; shortLabel: string; icon: typeof LayoutDashboard }>;
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>("dashboard");
@@ -133,47 +133,51 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen">
-      <header className="sticky top-0 z-20 border-b border-line bg-white/95 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-4">
-            <button type="button" className="flex items-center gap-3 text-left" onClick={() => setScreen("dashboard")}>
-              <div className="icon-button">
-                <GitBranch className="h-4 w-4" />
-              </div>
-              <div>
-                <div className="text-sm font-semibold uppercase text-slate-500">MemoryIR</div>
-                <div className="text-base font-semibold text-ink">Causal provenance for agent memory</div>
-              </div>
-            </button>
-            <HealthBadge health={health} />
-          </div>
-          <nav className="flex flex-wrap gap-2">
-            {screens.map(({ id, label, icon: Icon }) => (
-              <button
-                key={id}
-                type="button"
-                className={`secondary-button ${screen === id ? "border-teal text-teal" : ""}`}
-                onClick={() => setScreen(id)}
+    <div className="flex min-h-screen">
+      <aside className="fixed inset-y-0 left-0 z-30 flex w-[96px] flex-col items-center gap-1 border-r border-line bg-bg/90 py-5 backdrop-blur">
+        <button type="button" onClick={() => setScreen("dashboard")} className="mb-5 flex flex-col items-center gap-1.5" title="MemoryIR">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-teal to-[#4f3fd8] text-white shadow-lg shadow-teal/30">
+            <Shield className="h-5 w-5" />
+          </span>
+          <span className="text-[11px] font-bold tracking-tight text-white">MemoryIR</span>
+        </button>
+        <nav className="flex flex-1 flex-col items-center gap-1.5">
+          {screens.map(({ id, label, shortLabel, icon: Icon }) => (
+            <button
+              key={id}
+              type="button"
+              title={label}
+              onClick={() => setScreen(id)}
+              className={`flex w-[80px] flex-col items-center gap-1 py-2 transition ${
+                screen === id ? "text-teal" : "text-slate-500 hover:text-slate-200"
+              }`}
+              style={{ borderRadius: 10 }}
+            >
+              <span
+                className={`flex h-9 w-9 items-center justify-center rounded-xl ${
+                  screen === id ? "bg-teal text-white shadow-md shadow-teal/30" : ""
+                }`}
               >
-                <Icon className="h-4 w-4" />
-                {label}
-              </button>
-            ))}
-          </nav>
-        </div>
-      </header>
+                <Icon className="h-[18px] w-[18px]" />
+              </span>
+              <span className="whitespace-nowrap text-[10px] font-semibold leading-none">{shortLabel}</span>
+            </button>
+          ))}
+        </nav>
+        <HealthDot health={health} />
+      </aside>
 
-      {error ? (
-        <div className="mx-auto mt-4 max-w-7xl px-4">
-          <div className="border border-rose bg-rose-50 p-3 text-sm text-rose" style={{ borderRadius: 8 }}>
-            {error}
+      <div className="flex-1 pl-[96px]">
+        {error ? (
+          <div className="mx-auto max-w-7xl px-6 pt-5">
+            <div className="border border-rose/40 bg-rose/10 p-3 text-sm text-rose" style={{ borderRadius: 10 }}>
+              {error}
+            </div>
           </div>
-        </div>
-      ) : null}
+        ) : null}
 
-      <main className="mx-auto max-w-7xl px-4 py-6">
-        {screen === "dashboard" ? <Dashboard onOpenAction={launch} /> : null}
+        <main className="mx-auto max-w-7xl px-6 py-7">
+          {screen === "dashboard" ? <Dashboard onOpenAction={launch} health={health} /> : null}
         {screen === "action" ? (
           <ProtectedAction
             result={queryResult}
@@ -214,31 +218,19 @@ export default function App() {
             onInvestigate={handleForensics}
           />
         ) : null}
-        {screen === "evaluation" ? <Evaluation /> : null}
-      </main>
+          {screen === "evaluation" ? <Evaluation /> : null}
+        </main>
+      </div>
     </div>
   );
 }
 
-function HealthBadge({ health }: { health: SystemHealth | null }) {
-  if (!health) {
-    return (
-      <span className="hidden items-center gap-1.5 border border-line px-2 py-1 text-xs font-semibold text-slate-400 md:inline-flex" style={{ borderRadius: 8 }}>
-        <span className="h-1.5 w-1.5 rounded-full bg-slate-300" />
-        Connecting…
-      </span>
-    );
-  }
-  const live = health.provider !== "mock";
+function HealthDot({ health }: { health: SystemHealth | null }) {
+  const live = !!health && health.provider !== "mock";
+  const label = !health ? "Connecting…" : live ? `Live · ${health.provider} + ${health.database_backend}` : "Sandbox mode (mock provider)";
   return (
-    <span
-      className={`hidden items-center gap-1.5 border px-2 py-1 text-xs font-semibold md:inline-flex ${
-        live ? "border-teal text-teal" : "border-line text-slate-500"
-      }`}
-      style={{ borderRadius: 8 }}
-    >
-      <span className={`h-1.5 w-1.5 rounded-full ${live ? "bg-teal" : "bg-slate-400"}`} />
-      {live ? `Live · ${health.database_backend}` : "Sandbox mode"}
-    </span>
+    <div className="group relative flex items-center justify-center pb-1" title={label}>
+      <span className={`h-2.5 w-2.5 rounded-full ${live ? "bg-emerald shadow-[0_0_8px_1px_rgba(47,212,128,0.7)]" : "bg-slate-500"}`} />
+    </div>
   );
 }

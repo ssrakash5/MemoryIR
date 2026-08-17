@@ -16,17 +16,17 @@ export function FaithfulnessScore({ report }: Props) {
       {metrics.map(([label, value]) => (
         <div key={label}>
           <div className="mb-1 flex items-center justify-between text-xs">
-            <span className="font-semibold text-slate-600">{label}</span>
+            <span className="font-semibold text-slate-400">{label}</span>
             <span className="tabular-nums text-slate-500">{value.toFixed(2)}</span>
           </div>
-          <div className="h-2 overflow-hidden bg-slate-200" style={{ borderRadius: 8 }}>
+          <div className="h-2 overflow-hidden bg-panel2" style={{ borderRadius: 8 }}>
             <div className="h-full bg-teal" style={{ width: `${Math.min(100, value * 100)}%` }} />
           </div>
         </div>
       ))}
       <div className="border-t border-line pt-3 text-sm">
-        <span className="font-semibold text-ink">Ground path </span>
-        <span className="text-slate-600">
+        <span className="font-semibold text-white">Ground path </span>
+        <span className="text-slate-400">
           {report.ground_provenance.length
             ? report.ground_provenance.map((item) => (item.path as string[]).join(" -> ")).join(", ")
             : "pending"}

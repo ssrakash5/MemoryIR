@@ -4,13 +4,16 @@ export default {
   theme: {
     extend: {
       colors: {
-        ink: "#111827",
-        panel: "#f8fafc",
-        line: "#cbd5e1",
-        teal: "#0f766e",
-        cobalt: "#1d4ed8",
-        amber: "#b45309",
-        rose: "#be123c"
+        bg: "#0a0a12",
+        ink: "#f5f6fa",
+        panel: "#13141f",
+        panel2: "#191b29",
+        line: "#262a3d",
+        teal: "#6d5ef8",
+        cobalt: "#6d5ef8",
+        amber: "#f5b942",
+        rose: "#f04a53",
+        emerald: "#2fd480"
       }
     }
   },

@@ -13,19 +13,19 @@ export function MemoryCard({ memory, selected = false, onToggle }: Props) {
     <button
       type="button"
       onClick={() => onToggle?.(memory.memory_id)}
-      className={`w-full border bg-white p-3 text-left transition ${
-        selected ? "border-teal ring-2 ring-teal/20" : "border-line hover:border-teal"
+      className={`w-full border bg-panel2 p-3 text-left transition ${
+        selected ? "border-teal ring-2 ring-teal/20" : "border-line hover:border-teal/60"
       }`}
-      style={{ borderRadius: 8 }}
+      style={{ borderRadius: 10 }}
     >
       <div className="mb-2 flex items-center justify-between gap-2">
-        <span className="inline-flex min-w-0 items-center gap-2 text-sm font-semibold text-ink">
+        <span className="inline-flex min-w-0 items-center gap-2 text-sm font-semibold text-slate-100">
           <Icon className="h-4 w-4 flex-none text-teal" />
           <span className="truncate">{memory.display_id}</span>
         </span>
         {selected ? <SquareCheckBig className="h-4 w-4 flex-none text-teal" /> : null}
       </div>
-      <p className="min-h-12 text-sm leading-5 text-slate-700">{memory.content}</p>
+      <p className="min-h-12 text-sm leading-5 text-slate-400">{memory.content}</p>
       <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-normal text-slate-500">
         <span>{memory.memory_type}</span>
         <span>Generation {memory.generation}</span>

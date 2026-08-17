@@ -12,6 +12,8 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 @router.get("/summary", response_model=DashboardSummary)
 def get_dashboard_summary(services: Services = Depends(get_services)) -> DashboardSummary:
     traces = services.store.list_traces(limit=50)
+    interventions_by_trace = services.store.list_interventions_bulk([trace.trace_id for trace in traces])
+    reports_by_trace = services.attribution.report_bulk(traces, interventions_by_trace)
     summaries: list[TraceSummary] = []
     precisions: list[float] = []
     proxy_rates: list[float] = []
@@ -19,8 +21,7 @@ def get_dashboard_summary(services: Services = Depends(get_services)) -> Dashboa
     flagged_count = 0
 
     for trace in traces:
-        interventions = services.store.list_interventions(trace.trace_id)
-        guarded = len(interventions) > 0
+        guarded = len(interventions_by_trace.get(trace.trace_id, [])) > 0
         causal_precision = None
         causal_recall = None
         proxy_citation_rate = None
@@ -29,7 +30,7 @@ def get_dashboard_summary(services: Services = Depends(get_services)) -> Dashboa
 
         if guarded:
             guarded_count += 1
-            report = services.attribution.report(trace.trace_id)
+            report = reports_by_trace[trace.trace_id]
             causal_precision = report.causal_precision
             causal_recall = report.causal_recall
             proxy_citation_rate = report.proxy_citation_rate

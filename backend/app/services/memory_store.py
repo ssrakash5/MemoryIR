@@ -476,6 +476,9 @@ class InMemoryMemoryStore:
             return []
         return list(self.retrieval_items[ids[-1]])
 
+    def get_latest_retrieval_items_bulk(self, trace_ids: list[str]) -> dict[str, list[RetrievedItemRecord]]:
+        return {trace_id: self.get_latest_retrieval_items(trace_id) for trace_id in trace_ids}
+
     def create_claims(
         self,
         *,
@@ -500,6 +503,9 @@ class InMemoryMemoryStore:
 
     def get_claims(self, trace_id: str) -> list[ClaimRecord]:
         return list(self.claims.get(trace_id, []))
+
+    def get_claims_bulk(self, trace_ids: list[str]) -> dict[str, list[ClaimRecord]]:
+        return {trace_id: list(self.claims.get(trace_id, [])) for trace_id in trace_ids}
 
     def create_intervention(
         self,
@@ -538,6 +544,9 @@ class InMemoryMemoryStore:
 
     def list_interventions(self, trace_id: str) -> list[InterventionRecord]:
         return list(self.interventions.get(trace_id, []))
+
+    def list_interventions_bulk(self, trace_ids: list[str]) -> dict[str, list[InterventionRecord]]:
+        return {trace_id: list(self.interventions.get(trace_id, [])) for trace_id in trace_ids}
 
     def create_consolidation(
         self,
@@ -996,6 +1005,45 @@ class DatabaseMemoryStore:
             if str(row["retrieval_id"]) == latest_id
         ]
 
+    def get_latest_retrieval_items_bulk(self, trace_ids: list[str]) -> dict[str, list[RetrievedItemRecord]]:
+        if not trace_ids:
+            return {}
+        with db.connect(self.settings) as conn:
+            rows = conn.execute(
+                """
+                SELECT
+                    rr.trace_id,
+                    rr.retrieval_id,
+                    rr.started_at,
+                    ri.retrieval_rank,
+                    ri.vector_distance,
+                    m.*
+                FROM retrieval_runs rr
+                JOIN retrieval_items ri ON ri.retrieval_id = rr.retrieval_id
+                JOIN memories m ON m.memory_id = ri.memory_id
+                WHERE rr.trace_id = ANY(%s)
+                ORDER BY rr.trace_id, rr.started_at DESC, ri.retrieval_rank
+                """,
+                (trace_ids,),
+            ).fetchall()
+        out: dict[str, list[RetrievedItemRecord]] = {trace_id: [] for trace_id in trace_ids}
+        latest_id_by_trace: dict[str, str] = {}
+        for row in rows:
+            trace_id = str(row["trace_id"])
+            retrieval_id = str(row["retrieval_id"])
+            latest_id = latest_id_by_trace.setdefault(trace_id, retrieval_id)
+            if retrieval_id != latest_id:
+                continue
+            out[trace_id].append(
+                RetrievedItemRecord(
+                    retrieval_id=retrieval_id,
+                    memory=self._row_to_memory(row),
+                    retrieval_rank=row["retrieval_rank"],
+                    vector_distance=float(row["vector_distance"]),
+                )
+            )
+        return out
+
     def create_claims(
         self,
         *,
@@ -1035,6 +1083,19 @@ class DatabaseMemoryStore:
                 (trace_id,),
             ).fetchall()
         return [self._row_to_claim(row) for row in rows]
+
+    def get_claims_bulk(self, trace_ids: list[str]) -> dict[str, list[ClaimRecord]]:
+        if not trace_ids:
+            return {}
+        with db.connect(self.settings) as conn:
+            rows = conn.execute(
+                "SELECT * FROM generation_claims WHERE trace_id = ANY(%s) ORDER BY trace_id, claimed_rank",
+                (trace_ids,),
+            ).fetchall()
+        out: dict[str, list[ClaimRecord]] = {trace_id: [] for trace_id in trace_ids}
+        for row in rows:
+            out.setdefault(str(row["trace_id"]), []).append(self._row_to_claim(row))
+        return out
 
     def create_intervention(
         self,
@@ -1106,6 +1167,19 @@ class DatabaseMemoryStore:
                 (trace_id,),
             ).fetchall()
         return [self._row_to_intervention(row) for row in rows]
+
+    def list_interventions_bulk(self, trace_ids: list[str]) -> dict[str, list[InterventionRecord]]:
+        if not trace_ids:
+            return {}
+        with db.connect(self.settings) as conn:
+            rows = conn.execute(
+                "SELECT * FROM intervention_runs WHERE trace_id = ANY(%s) ORDER BY created_at",
+                (trace_ids,),
+            ).fetchall()
+        out: dict[str, list[InterventionRecord]] = {trace_id: [] for trace_id in trace_ids}
+        for row in rows:
+            out.setdefault(str(row["trace_id"]), []).append(self._row_to_intervention(row))
+        return out
 
     def create_consolidation(
         self,

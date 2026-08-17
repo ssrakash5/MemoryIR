@@ -218,15 +218,24 @@ class BedrockProvider:
         )
         raw = self._converse_text(prompt, max_tokens=self.settings.bedrock_max_tokens)
         data = _json_object(raw)
-        claims = [
-            MemoryAttribution(
-                memory_id=item["memory_id"],
-                importance=int(item.get("importance", index + 1)),
-                reason=item.get("reason", "Claimed by model."),
+        by_id = {memory.memory_id: memory.memory_id for memory in memories}
+        by_display = {memory.display_id: memory.memory_id for memory in memories}
+        claims = []
+        for index, item in enumerate(data.get("memory_attribution", [])):
+            raw_id = str(item.get("memory_id") or "")
+            resolved_id = by_id.get(raw_id) or by_display.get(raw_id)
+            if not resolved_id:
+                # The model can hallucinate or truncate IDs; skip claims that
+                # don't resolve to a memory actually in context rather than
+                # letting a KeyError propagate downstream.
+                continue
+            claims.append(
+                MemoryAttribution(
+                    memory_id=resolved_id,
+                    importance=_coerce_importance(item.get("importance"), index + 1),
+                    reason=item.get("reason", "Claimed by model."),
+                )
             )
-            for index, item in enumerate(data.get("memory_attribution", []))
-            if item.get("memory_id")
-        ]
         answer = data.get("answer") or data.get("decision") or raw
         decision = data.get("decision") or str(answer).upper()
         decision, answer = _normalize_decision(str(decision), str(answer), memories)
@@ -284,6 +293,25 @@ def _normalize_decision(
                 label = candidate
                 break
     return label, answer
+
+
+_WORD_IMPORTANCE = {"high": 1, "medium": 2, "med": 2, "low": 3}
+
+
+def _coerce_importance(value: object, default: int) -> int:
+    if isinstance(value, bool):
+        return default
+    if isinstance(value, (int, float)):
+        return int(value)
+    if isinstance(value, str):
+        text = value.strip().lower()
+        if text in _WORD_IMPORTANCE:
+            return _WORD_IMPORTANCE[text]
+        try:
+            return int(text)
+        except ValueError:
+            return default
+    return default
 
 
 def _requires_cockroachdb(memories: list[MemoryRecord]) -> bool:

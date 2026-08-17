@@ -42,8 +42,8 @@ export function MemoryLab({ memories, loading, onReset, onAdd, onConsolidate }: 
       <section className="space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold text-ink">Memory Lab</h1>
-            <p className="text-sm text-slate-600">Inspect what's actually in this agent's persistent memory, and how derived memories were consolidated.</p>
+            <h1 className="text-2xl font-semibold text-white">Memory Lab</h1>
+            <p className="text-sm text-slate-400">Inspect what's actually in this agent's persistent memory, and how derived memories were consolidated.</p>
           </div>
           <div className="flex gap-2">
             <button type="button" className="secondary-button" onClick={onReset} disabled={loading}>
@@ -64,8 +64,8 @@ export function MemoryLab({ memories, loading, onReset, onAdd, onConsolidate }: 
 
         <form className="panel flex flex-col gap-3 p-4 md:flex-row" onSubmit={submit}>
           <textarea
-            className="min-h-20 flex-1 resize-none border border-line bg-white p-3 text-sm outline-none focus:border-teal"
-            style={{ borderRadius: 8 }}
+            className="min-h-20 flex-1 resize-none border border-line bg-panel2 p-3 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-teal"
+            style={{ borderRadius: 10 }}
             value={content}
             onChange={(event) => setContent(event.target.value)}
             placeholder="Add a raw memory"
@@ -77,7 +77,7 @@ export function MemoryLab({ memories, loading, onReset, onAdd, onConsolidate }: 
         </form>
 
         <div>
-          <h2 className="mb-3 text-sm font-semibold uppercase text-slate-500">Ground Memories</h2>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Ground Memories</h2>
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {raw.map((memory) => (
               <MemoryCard
@@ -91,7 +91,7 @@ export function MemoryLab({ memories, loading, onReset, onAdd, onConsolidate }: 
         </div>
 
         <div>
-          <h2 className="mb-3 text-sm font-semibold uppercase text-slate-500">Derived Memories</h2>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Derived Memories</h2>
           <div className="grid gap-3 md:grid-cols-2">
             {derived.map((memory) => (
               <MemoryCard key={memory.memory_id} memory={memory} />
@@ -101,7 +101,7 @@ export function MemoryLab({ memories, loading, onReset, onAdd, onConsolidate }: 
       </section>
 
       <section className="panel p-4">
-        <h2 className="mb-3 text-sm font-semibold uppercase text-slate-500">Lineage Graph</h2>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Lineage Graph</h2>
         <MemoryGraph memories={memories} highlighted={["M2", "M7"]} />
       </section>
     </div>
