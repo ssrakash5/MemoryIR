@@ -74,6 +74,28 @@ intervention:
 The forensic layer, backed by CockroachDB Managed MCP, lets anyone ask
 *"why was M7 influential?"* after the fact and get the trace, not a guess.
 
+### Product screenshots
+
+The screenshots below were captured from the local demo using seeded dummy
+trace data and the mock model path, so the full flow is reproducible
+without live credentials.
+
+#### Security dashboard
+
+![MemoryIR security dashboard with guarded and flagged agent actions](docs/screenshots/security-dashboard.png)
+
+#### Protected action blocked
+
+![MemoryIR protected action review blocking a single-region database write](docs/screenshots/protected-action-blocked.png)
+
+#### Causal trace and provenance
+
+![MemoryIR agent trace showing retrieval, attribution metrics, interventions, and M2 to M7 provenance](docs/screenshots/agent-trace-provenance.png)
+
+#### Forensic investigator
+
+![MemoryIR forensic investigator showing MCP calls and causal memory report](docs/screenshots/forensic-investigator.png)
+
 ### What MemoryIR actually produced
 
 SpAIware, EchoLeak, and MemGhost all exploited the same gap: the system
