@@ -2,6 +2,7 @@ creds.env
 .env
 MemoryIR_End_to_End_Hackathon_Blueprint.md
 DEVPOST_SUBMISSION_DRAFT.md
+DEMO_VIDEO_SCRIPT.md
 .deploy/
 .aws-sam/
 backend/static/
